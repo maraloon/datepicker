@@ -2,6 +2,7 @@ package datepicker
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -83,16 +84,17 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m *Model) View() string {
 	var weekLegend string
 	if m.config.FirstWeekdayIsMo {
-		weekLegend = "Mo Tu We Th Fr Sa Su"
+		weekLegend = " Mo Tu We Th Fr Sa Su"
 	} else {
-		weekLegend = "Su Mo Tu We Th Fr Sa"
+		weekLegend = " Su Mo Tu We Th Fr Sa"
 	}
 
+	monthYearTitle := fmt.Sprintf("%s %d", m.date.Month(), m.date.Year())
 	s := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("5")).
 		Render(
-			fmt.Sprintf("    %s %d", m.date.Month(), m.date.Year())+"\n "+weekLegend,
+			strings.Repeat(" ", (len(weekLegend)-len(monthYearTitle))/2+1)+monthYearTitle+"\n"+weekLegend,
 		) + "\n"
 
 	monthMap := m.monthMap()
