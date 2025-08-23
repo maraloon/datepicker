@@ -2,6 +2,7 @@ package datepicker
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,11 +13,12 @@ import (
 )
 
 type Model struct {
-	date   time.Time
-	Keys   KeyMap
-	Help   help.Model
-	config Config
-	Colors Colors
+	date     time.Time
+	monthMap func(date time.Time) Month
+	Keys     KeyMap
+	Help     help.Model
+	config   Config
+	Colors   Colors
 }
 
 type (
@@ -25,13 +27,15 @@ type (
 )
 
 func InitModel(config Config, colors Colors) *Model {
-	return &Model{
+	m := &Model{
 		date:   config.StartAt,
 		Keys:   Keys,
 		Help:   help.New(),
 		config: config,
 		Colors: colors,
 	}
+	m.monthMap = cachedMonthMaps(m.config.FirstWeekdayIsMo)
+	return m
 }
 
 func (m *Model) CurrentValue() string {
@@ -59,10 +63,10 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.Keys.Up):
 			m.date = m.date.AddDate(0, 0, -7)
 		case key.Matches(msg, m.Keys.WeekStart):
-			m.date = time.Date(m.date.Year(), m.date.Month(), m.monthMap()[m.week()].firstDay(), 0, 0, 0, 0, time.UTC)
+			m.date = time.Date(m.date.Year(), m.date.Month(), m.monthMap(m.date)[m.week()].firstDay(), 0, 0, 0, 0, time.UTC)
 		case key.Matches(msg, m.Keys.WeekEnd):
 
-			m.date = time.Date(m.date.Year(), m.date.Month(), m.monthMap()[m.week()].lastDay(), 0, 0, 0, 0, time.UTC)
+			m.date = time.Date(m.date.Year(), m.date.Month(), m.monthMap(m.date)[m.week()].lastDay(), 0, 0, 0, 0, time.UTC)
 		case key.Matches(msg, m.Keys.MonthStart):
 			m.date = time.Date(m.date.Year(), m.date.Month(), 1, 0, 0, 0, 0, time.UTC)
 		case key.Matches(msg, m.Keys.MonthEnd):
@@ -97,11 +101,20 @@ func (m *Model) View() string {
 			strings.Repeat(" ", (len(weekLegend)-len(monthYearTitle))/2+1)+monthYearTitle+"\n"+weekLegend,
 		) + "\n"
 
-	monthMap := m.monthMap()
-	for _, week := range monthMap {
+	notCurrentMonthdays := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("7"))
+
+	for weekK, week := range m.monthMap(m.date) {
 		for k, day := range week {
 			if day == 0 {
-				s += "   "
+				if weekK == 0 {
+					prevMonthMap := m.monthMap(m.date.AddDate(0, -1, 0))
+					s += notCurrentMonthdays.Render(fmt.Sprintf(" %2d", prevMonthMap[len(prevMonthMap)-1][k]))
+				} else {
+					nextMonthMap := m.monthMap(m.date.AddDate(0, +1, 0))
+					s += notCurrentMonthdays.Render(fmt.Sprintf(" %2d", nextMonthMap[0][k]))
+				}
 				continue
 			}
 
@@ -146,9 +159,9 @@ func (m *Model) View() string {
 		s += "\n"
 	}
 
-	if len(monthMap) == 4 {
+	if len(m.monthMap(m.date)) == 4 {
 		s += "\n\n"
-	} else if len(monthMap) == 5 {
+	} else if len(m.monthMap(m.date)) == 5 {
 		s += "\n"
 	}
 
@@ -202,37 +215,43 @@ func firstDayOfMonth(year int, month time.Month, firstWeekDayIsMonday bool) int 
 	return firstDay
 }
 
-func (m *Model) monthMap() Month {
-	daysInMonth := daysInMonth(m.date.Year(), m.date.Month())
-	startDay := firstDayOfMonth(m.date.Year(), m.date.Month(), m.config.FirstWeekdayIsMo)
+func cachedMonthMaps(firstWeekdayIsMo bool) func(date time.Time) Month {
+	cache := make(map[string]Month)
+	return func(date time.Time) Month {
+		key := strconv.Itoa(date.Year() + int(date.Month()))
+		if _, exists := cache[key]; !exists {
+			daysInMonth := daysInMonth(date.Year(), date.Month())
+			startDay := firstDayOfMonth(date.Year(), date.Month(), firstWeekdayIsMo)
 
-	monthMap := make(Month, 0)
-	week := Week{}
-	dayCounter := 1
+			monthMap := make(Month, 0)
+			week := Week{}
+			dayCounter := 1
 
-	// Fill the first week with leading zeros
-	for i := range startDay {
-		week[i] = 0
-	}
+			// Fill the first week with leading zeros
+			for i := range startDay {
+				week[i] = 0
+			}
 
-	// Fill the days of the month
-	for dayCounter <= daysInMonth {
-		week[startDay] = dayCounter
-		dayCounter++
-		startDay++
+			// Fill the days of the month
+			for dayCounter <= daysInMonth {
+				week[startDay] = dayCounter
+				dayCounter++
+				startDay++
 
-		// If the week is full, add it to the weeks slice and reset
-		if startDay == 7 {
-			monthMap = append(monthMap, week)
-			week = Week{}
-			startDay = 0
+				// If the week is full, add it to the weeks slice and reset
+				if startDay == 7 {
+					monthMap = append(monthMap, week)
+					week = Week{}
+					startDay = 0
+				}
+			}
+
+			// Add the last week if it has any days
+			if startDay > 0 {
+				monthMap = append(monthMap, week)
+			}
+			cache[key] = monthMap
 		}
+		return cache[key]
 	}
-
-	// Add the last week if it has any days
-	if startDay > 0 {
-		monthMap = append(monthMap, week)
-	}
-
-	return monthMap
 }
