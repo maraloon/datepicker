@@ -3,7 +3,6 @@ package datepicker
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/help"
@@ -86,20 +85,19 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) View() string {
-	var weekLegend string
+	var weekLegend []string
 	if m.config.FirstWeekdayIsMo {
-		weekLegend = " Mo Tu We Th Fr Sa Su"
+		weekLegend = []string{" Mo Tu We Th Fr", " Sa Su"}
 	} else {
-		weekLegend = " Su Mo Tu We Th Fr Sa"
+		weekLegend = []string{" Su Mo Tu We Th", " Fr Sa"}
 	}
 
-	monthYearTitle := fmt.Sprintf("%s %d", m.date.Month(), m.date.Year())
-	s := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color("5")).
-		Render(
-			strings.Repeat(" ", (len(weekLegend)-len(monthYearTitle))/2+1)+monthYearTitle+"\n"+weekLegend,
-		) + "\n"
+	monthYearTitle := fmt.Sprintf(" %s %d", m.date.Month(), m.date.Year())
+	bold := lipgloss.NewStyle().Bold(true)
+
+	s := bold.Foreground(lipgloss.Color("5")).Render(monthYearTitle) + "\n" +
+		bold.Foreground(lipgloss.Color("5")).Render(weekLegend[0]) +
+		bold.Foreground(lipgloss.Color("4")).Render(weekLegend[1]) + "\n"
 
 	notCurrentMonthdays := lipgloss.NewStyle().
 		Bold(true).
