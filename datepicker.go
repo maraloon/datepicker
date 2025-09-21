@@ -128,17 +128,17 @@ func (m *Model) View() string {
 
 			curDate := time.Date(m.date.Year(), m.date.Month(), day, m.date.Hour(), m.date.Minute(), m.date.Second(), m.date.Nanosecond(), m.date.Location()).Format("2006/01/02")
 
-			if c, exists := m.Colors[curDate]; exists {
-				if focused {
-					style = style.Background(lipgloss.Color(c)).Foreground(lipgloss.Color("0"))
-				} else {
-					style = style.Foreground(lipgloss.Color(c))
-				}
-			} else if today {
+			if today {
 				if focused {
 					style = style.Background(lipgloss.Color("9")).Foreground(lipgloss.Color("0"))
 				} else {
 					style = style.Foreground(lipgloss.Color("9"))
+				}
+			} else if c, exists := m.Colors[curDate]; exists {
+				if focused {
+					style = style.Background(lipgloss.Color(c)).Foreground(lipgloss.Color("0"))
+				} else {
+					style = style.Foreground(lipgloss.Color(c))
 				}
 			} else if weekend {
 				if focused {
