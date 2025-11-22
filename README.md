@@ -1,8 +1,9 @@
 # Date picker bubble
+rstrst
 
 reusable bubble component for date picking
 
-see [pickdate](https://githug.com/maraloon/pickdate) and [tty-diary](https://github.com/maraloo/tty-diary) as examples of using
+see [pickdate](https://github.com/maraloon/pickdate) and [tty-diary](https://github.com/maraloon/tty-diary) as examples of using
 
 
 ## TODO
